@@ -1002,7 +1002,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
-from aiogram.filters import CommandObject, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import Message
 
 from ai_clerk.bot.admin import generate_invite_link
@@ -1044,7 +1044,6 @@ async def main() -> None:
     dp = Dispatcher()
     dp.update.middleware(DependencyMiddleware(session_factory))
 
-    @dp.message(CommandStart(deep_link=True))
     @dp.message(CommandStart())
     async def on_start(
         message: Message,
@@ -1062,7 +1061,7 @@ async def main() -> None:
         )
         await message.answer(reply)
 
-    @dp.message(lambda m: m.text and m.text.startswith("/invite"))
+    @dp.message(Command("invite"))
     async def on_invite(
         message: Message,
         command: CommandObject,
