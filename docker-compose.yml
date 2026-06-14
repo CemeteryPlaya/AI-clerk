@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ai_clerk
+      POSTGRES_PASSWORD: ai_clerk
+      POSTGRES_DB: ai_clerk
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_clerk"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  bot:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ai_clerk:ai_clerk@db:5432/ai_clerk
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
