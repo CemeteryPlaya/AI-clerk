@@ -1,0 +1,27 @@
+from ai_clerk.config import Settings
+
+
+def test_settings_load_from_env(monkeypatch):
+    monkeypatch.setenv("BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("SECRET_KEY", "s3cret")
+    monkeypatch.setenv("FERNET_KEY", "key-placeholder")
+    monkeypatch.setenv("ADMIN_TELEGRAM_IDS", "[111, 222]")
+
+    s = Settings(_env_file=None)
+
+    assert s.bot_token == "123:abc"
+    assert s.secret_key == "s3cret"
+    assert s.admin_telegram_ids == [111, 222]
+    assert s.database_url.startswith("sqlite")  # default
+    assert s.invite_ttl_seconds == 86400        # default
+
+
+def test_settings_defaults(monkeypatch):
+    monkeypatch.setenv("BOT_TOKEN", "x")
+    monkeypatch.setenv("SECRET_KEY", "x")
+    monkeypatch.setenv("FERNET_KEY", "x")
+
+    s = Settings(_env_file=None)
+
+    assert s.admin_telegram_ids == []
+    assert s.log_level == "INFO"
