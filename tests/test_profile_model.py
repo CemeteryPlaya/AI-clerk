@@ -1,4 +1,6 @@
+import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from ai_clerk.db.models import Profile
 
@@ -16,13 +18,12 @@ async def test_profile_persists_with_defaults(session):
     assert profile.iin_enc is None          # encrypted PII defaults empty
     assert profile.budget_limit is None     # policy nullable
     assert profile.created_at is not None
+    assert profile.updated_at is not None
 
 
 async def test_profile_telegram_user_id_unique(session):
     session.add(Profile(telegram_user_id=1))
     await session.commit()
     session.add(Profile(telegram_user_id=1))
-    import pytest
-    from sqlalchemy.exc import IntegrityError
     with pytest.raises(IntegrityError):
         await session.commit()
