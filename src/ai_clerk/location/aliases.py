@@ -45,4 +45,5 @@ CITY_ALIASES: dict[str, str] = {
 
 
 def city_to_iata(name: str) -> str | None:
+    """Return the IATA code for a city name (any supported spelling), or None."""
     return CITY_ALIASES.get(normalize_city(name))
