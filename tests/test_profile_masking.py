@@ -9,6 +9,7 @@ def test_mask_iin_handles_short_and_empty():
     assert mask_iin("12") == "••"
     assert mask_iin(None) == "—"
     assert mask_iin("") == "—"
+    assert mask_iin("   ") == "—"
 
 
 def test_mask_document_keeps_last_three():
@@ -18,3 +19,4 @@ def test_mask_document_keeps_last_three():
 def test_mask_document_handles_short_and_empty():
     assert mask_document("AB") == "••"
     assert mask_document(None) == "—"
+    assert mask_document("   ") == "—"
