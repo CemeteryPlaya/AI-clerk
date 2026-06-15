@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 
-@dataclass
+@dataclass(frozen=True)
 class ProfileDTO:
     """Decrypted, read-only view of a profile returned by ProfileService."""
 

@@ -24,6 +24,8 @@ async def test_upsert_identity_encrypts_and_roundtrips(session):
     assert dto.full_name == "ИВАНОВ ИВАН ИВАНОВИЧ"
     assert dto.iin == "900101300123"
     assert dto.document_type == "udo"
+    assert dto.document_number == "N12345678"
+    assert dto.birth_date == "1990-01-01"
     assert dto.position == "Генеральный директор"
     assert dto.prefer_faster is True
 
@@ -57,6 +59,15 @@ async def test_set_default_departure(session):
     assert dto.default_departure_city == "Алматы"
 
 
+async def test_set_default_departure_is_partial(session):
+    svc = _service(session)
+    await svc.set_default_departure(7, iata="ALA")
+    await svc.set_default_departure(7, city="Алматы")  # iata must survive
+    dto = await svc.get_profile(7)
+    assert dto.default_departure_iata == "ALA"
+    assert dto.default_departure_city == "Алматы"
+
+
 async def test_set_preferences_and_policy(session):
     svc = _service(session)
     await svc.set_preferences(7, preferred_airlines=["KC"], prefer_faster=False)
@@ -72,6 +83,12 @@ async def test_set_preferences_rejects_unknown_key(session):
     svc = _service(session)
     with pytest.raises(ValueError):
         await svc.set_preferences(7, nonsense=1)
+
+
+async def test_set_policy_rejects_unknown_key(session):
+    svc = _service(session)
+    with pytest.raises(ValueError):
+        await svc.set_policy(7, nonsense=1)
 
 
 async def test_get_profile_unknown_returns_none(session):
