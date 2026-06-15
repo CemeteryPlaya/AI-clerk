@@ -2,9 +2,15 @@ import re
 from dataclasses import dataclass
 from typing import Protocol
 
-_IIN_RE = re.compile(r"\b(\d{12})\b")
+# Digit-boundary lookarounds (not \b) so the IIN is found even when OCR merges
+# the label with the value, e.g. "ИИН900101300123" (Cyrillic letter + digit
+# share \w, so \b would not fire there).
+_IIN_RE = re.compile(r"(?<!\d)(\d{12})(?!\d)")
+# No semantic validation (month/day ranges); a KZ ID document contains one date.
 _DATE_RE = re.compile(r"\b(\d{2}\.\d{2}\.\d{4})\b")
 _DOC_RE = re.compile(r"\b(N\s?\d{6,9})\b", re.IGNORECASE)
+# KZ identity documents store the name in all-caps; lower-case OCR output of a
+# text-layer PDF will not match this pattern (acceptable for the MVP scope).
 _NAME_RE = re.compile(
     r"(?:ФИО|Ф\.?\s?И\.?\s?О\.?)\s*[:\-]?\s*"
     r"([А-ЯЁ][А-ЯЁA-Z\-]+(?:\s+[А-ЯЁ][А-ЯЁA-Z\-]+){1,2})"

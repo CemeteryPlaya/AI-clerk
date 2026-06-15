@@ -33,3 +33,10 @@ def test_extracts_partial():
     assert result.iin == "123456789012"
     assert result.full_name is None
     assert result.document_number is None
+    assert result.birth_date is None
+
+
+def test_extracts_iin_without_separator():
+    # OCR often merges the label and value: "ИИН900101300123".
+    result = RegexProfileExtractor().extract("ИИН900101300123")
+    assert result.iin == "900101300123"
