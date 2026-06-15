@@ -1,3 +1,6 @@
+from functools import lru_cache
+
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,7 +15,7 @@ class Settings(BaseSettings):
     bot_token: str
 
     # Security
-    secret_key: str          # signs invite tokens
+    secret_key: str          # general-purpose signing secret
     fernet_key: str          # encrypts PII at rest
 
     # Persistence
@@ -20,11 +23,12 @@ class Settings(BaseSettings):
 
     # Access / onboarding
     admin_telegram_ids: list[int] = []
-    invite_ttl_seconds: int = 86400  # 24h
+    invite_ttl_seconds: int = Field(86400, gt=0)  # 24h
 
     # Ops
     log_level: str = "INFO"
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()

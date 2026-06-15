@@ -22,7 +22,7 @@ async def handle_start(
         return f"С возвращением! Ваша роль: {role.value}."
 
     try:
-        role = invite_service.verify(token, invite_ttl_seconds)
+        role = await invite_service.verify(token, invite_ttl_seconds)
     except InviteError:
         return "Ссылка-приглашение недействительна или истекла."
 

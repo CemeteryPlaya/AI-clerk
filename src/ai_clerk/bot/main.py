@@ -35,10 +35,10 @@ async def main() -> None:
     await init_models(engine)
     session_factory = create_session_factory(engine)
 
-    invite_service = InviteService(settings.secret_key)
-
     bot = Bot(token=settings.bot_token)
     me = await bot.get_me()
+    if me.username is None:
+        raise RuntimeError("Bot must have a @username to use invite links")
     bot_username = me.username
 
     dp = Dispatcher()
@@ -49,6 +49,7 @@ async def main() -> None:
         message: Message,
         command: CommandObject,
         role_service: RoleService,
+        invite_service: InviteService,
     ) -> None:
         token = command.args
         reply = await handle_start(
@@ -66,6 +67,7 @@ async def main() -> None:
         message: Message,
         command: CommandObject,
         role_service: RoleService,
+        invite_service: InviteService,
     ) -> None:
         role = await role_service.get_role(message.from_user.id)
         # Bootstrap: configured admin ids are treated as ADMIN even before binding.
@@ -80,10 +82,16 @@ async def main() -> None:
                 "Использование: /invite <director|accountant|admin>"
             )
             return
-        link = generate_invite_link(bot_username, target, invite_service)
+        if (
+            target is Role.ADMIN
+            and message.from_user.id not in settings.admin_telegram_ids
+        ):
+            await message.answer("Создавать роль ADMIN могут только основатели.")
+            return
+        link = await generate_invite_link(bot_username, target, invite_service)
         await message.answer(
             f"Ссылка-приглашение для роли {target.value} (TTL "
-            f"{settings.invite_ttl_seconds} c):\n{link}"
+            f"{settings.invite_ttl_seconds}с):\n{link}"
         )
 
     try:

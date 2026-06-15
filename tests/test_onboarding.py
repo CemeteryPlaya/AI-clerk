@@ -5,9 +5,9 @@ from ai_clerk.roles.service import RoleService
 
 
 async def test_valid_token_grants_role(session):
-    invites = InviteService("secret")
+    invites = InviteService(session)
     roles = RoleService(session)
-    token = invites.generate(Role.DIRECTOR)
+    token = await invites.generate(Role.DIRECTOR)
 
     reply = await handle_start(token, 10, 10, invites, roles, 3600)
 
@@ -16,7 +16,7 @@ async def test_valid_token_grants_role(session):
 
 
 async def test_invalid_token_denied(session):
-    invites = InviteService("secret")
+    invites = InviteService(session)
     roles = RoleService(session)
 
     reply = await handle_start("garbage", 10, 10, invites, roles, 3600)
@@ -26,7 +26,7 @@ async def test_invalid_token_denied(session):
 
 
 async def test_no_token_unknown_user(session):
-    invites = InviteService("secret")
+    invites = InviteService(session)
     roles = RoleService(session)
 
     reply = await handle_start(None, 5, 5, invites, roles, 3600)
@@ -36,7 +36,7 @@ async def test_no_token_unknown_user(session):
 
 
 async def test_no_token_known_user_refreshes_chat(session):
-    invites = InviteService("secret")
+    invites = InviteService(session)
     roles = RoleService(session)
     await roles.bind_user(7, 7, Role.ACCOUNTANT)
 

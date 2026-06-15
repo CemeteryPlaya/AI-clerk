@@ -5,11 +5,12 @@ from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from ai_clerk.roles.invites import InviteService
 from ai_clerk.roles.service import RoleService
 
 
 class DependencyMiddleware(BaseMiddleware):
-    """Opens a DB session per update and injects RoleService into handlers."""
+    """Opens a DB session per update and injects services into handlers."""
 
     def __init__(self, session_factory: async_sessionmaker):
         self._session_factory = session_factory
@@ -23,4 +24,5 @@ class DependencyMiddleware(BaseMiddleware):
         async with self._session_factory() as session:
             data["session"] = session
             data["role_service"] = RoleService(session)
+            data["invite_service"] = InviteService(session)
             return await handler(event, data)
