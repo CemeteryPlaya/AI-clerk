@@ -14,6 +14,9 @@ class PdfTextExtractor:
         self._min_text_len = min_text_len
 
     def extract_text(self, pdf_bytes: bytes) -> str:
+        # NOTE: pypdf raises EmptyFileError/PdfStreamError on empty or corrupt
+        # input; hardening against malformed uploads is deferred (handled at the
+        # bot layer in a later phase), not silently swallowed here.
         text = self._text_layer(pdf_bytes)
         if len(text.strip()) >= self._min_text_len:
             return text
