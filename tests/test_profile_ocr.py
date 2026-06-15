@@ -11,4 +11,4 @@ def test_tesseract_engine_constructs_without_native_deps():
     # Heavy deps (poppler/tesseract) are imported lazily inside recognize_pdf,
     # so constructing the adapter must not require them.
     engine = TesseractOcrEngine(dpi=200)
-    assert engine is not None
+    assert engine._dpi == 200  # constructed; lazy deps not needed

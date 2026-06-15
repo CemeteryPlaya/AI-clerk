@@ -30,9 +30,7 @@ class TesseractOcrEngine:
 
     def recognize_pdf(self, pdf_bytes: bytes, langs: str = "rus+kaz+eng") -> str:
         from pdf2image import convert_from_bytes
-        import pytesseract
+        from pytesseract import image_to_string
 
         images = convert_from_bytes(pdf_bytes, dpi=self._dpi)
-        return "\n".join(
-            pytesseract.image_to_string(image, lang=langs) for image in images
-        )
+        return "\n".join(image_to_string(image, lang=langs) for image in images)
