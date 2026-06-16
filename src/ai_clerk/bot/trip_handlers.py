@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 def build_trip_router(orchestrator: Orchestrator) -> Router:
     router = Router()
 
+    async def _has_trip_create(user_id: int, role_service: RoleService) -> bool:
+        return is_allowed(await role_service.get_role(user_id), "trip.create")
+
     async def _can_create(message: Message, role_service: RoleService) -> bool:
         if message.from_user is None:
             return False
-        role = await role_service.get_role(message.from_user.id)
-        return is_allowed(role, "trip.create")
+        return await _has_trip_create(message.from_user.id, role_service)
 
     @router.message(Command("cancel"))
     async def on_cancel(message: Message, role_service: RoleService) -> None:
@@ -60,12 +62,16 @@ def build_trip_router(orchestrator: Orchestrator) -> Router:
     async def on_pick(
         callback: CallbackQuery,
         session: AsyncSession,
+        role_service: RoleService,
         profile_service: ProfileService,
     ) -> None:
-        if callback.message is None:
+        if callback.message is None or callback.from_user is None:
             await callback.answer(
                 "Сессия устарела, начните поиск заново.", show_alert=True
             )
+            return
+        if not await _has_trip_create(callback.from_user.id, role_service):
+            await callback.answer("Недостаточно прав.", show_alert=True)
             return
         index = int(callback.data.rsplit(":", 1)[1])
         profile = await profile_service.get_profile(callback.from_user.id)
@@ -75,9 +81,18 @@ def build_trip_router(orchestrator: Orchestrator) -> Router:
                 "Вариант недоступен, начните поиск заново.", show_alert=True
             )
             return
-        trip = await TripService(session).create_confirmed_trip(
-            callback.message.chat.id, callback.from_user.id, draft
-        )
+        try:
+            trip = await TripService(session).create_confirmed_trip(
+                callback.message.chat.id, callback.from_user.id, draft
+            )
+        except Exception:
+            logger.exception(
+                "Failed to persist trip for chat %s", callback.message.chat.id
+            )
+            await callback.answer(
+                "Не удалось сохранить поездку. Попробуйте позже.", show_alert=True
+            )
+            return
         flight = draft.flight
         hotel_line = (
             f"\nОтель: {draft.hotel.name} {draft.hotel.stars}★, "
