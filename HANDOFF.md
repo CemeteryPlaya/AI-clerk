@@ -8,14 +8,15 @@
 ## 0. Стартовый промпт для нового чата (вставьте это первым)
 
 > Я продолжаю проект «Личный AI-секретарь (Telegram-бот)» для ген. директора. Ниже — полный
-> handoff: цель, решения, архитектура, что уже сделано (Планы 1 и 2 завершены и в `main`) и план.
+> handoff: цель, решения, архитектура, что уже сделано (Планы 1, 2 и 3 завершены и в `main`) и план.
 > Рабочая папка: `c:\Users\User\Desktop\AI-clerk` (git-репозиторий, ветка `main`, venv на Python 3.14
 > в `.venv`). Спецификация: `docs/superpowers/specs/2026-06-15-ai-secretary-business-trips-design.md`.
 > Планы: `docs/superpowers/plans/2026-06-15-phase1-foundation.md`,
-> `docs/superpowers/plans/2026-06-15-phase2-profile-location.md`.
-> Задача: составить и реализовать **План 3 (Оркестрация поездки + поиск)**. Используй те же навыки
+> `docs/superpowers/plans/2026-06-15-phase2-profile-location.md`,
+> `docs/superpowers/plans/2026-06-16-phase3-trip-orchestration.md`.
+> Задача: составить и реализовать **План 4 (Браузер-агент + оплата)**. Используй те же навыки
 > (brainstorming → writing-plans → subagent-driven-development) и тот же стиль (TDD, мелкие коммиты,
-> ревью между задачами). Сначала прочитай спеку и код в `src/ai_clerk/`, затем предложи План 3.
+> ревью между задачами). Сначала прочитай спеку и код в `src/ai_clerk/`, затем предложи План 4.
 
 ---
 
@@ -77,18 +78,16 @@ storage/chats/<chat_hash>/trips/<trip_hash>/
 
 - **План 1 — Фундамент** ✅ ЗАВЕРШЁН, в `main` (см. §5).
 - **План 2 — Профиль + геолокация** ✅ ЗАВЕРШЁН, в `main` (см. §5).
-- **План 3 — Оркестрация поездки + поиск** ← СЛЕДУЮЩИЙ. Claude-оркестратор (slot-filling: куда/когда/
-  предпочтения, уточняющие вопросы, маскировка PII перед облаком), Trip Saga (сохраняемая стейт-машина),
-  `BookingProvider` (интерфейс) + `MockProvider` (для тестов), ранжирование «время→цена в рамках
-  политики», показ топ-вариантов + подтверждение в 1 тап.
-- **План 4 — Браузер-агент + оплата**: `BrowserAgentProvider` (Playwright/OpenClaw), воркер, очередь,
-  OTP-хэндофф через чат, идемпотентность, защита от двойной покупки.
+- **План 3 — Оркестрация поездки + поиск** ✅ ЗАВЕРШЁН, в `main` (см. §5).
+- **План 4 — Браузер-агент + оплата** ← СЛЕДУЮЩИЙ. `BrowserAgentProvider` (Playwright/OpenClaw) —
+  реальная реализация `BookingProvider.book()`, воркер/очередь, OTP-хэндофф через чат, идемпотентность
+  и защита от двойной покупки; перевод `Trip` из `CONFIRMED` через статусы бронирования/оплаты.
 - **План 5 — Приказ + архив/индекс**: OrderService (DOCX-шаблон → PDF), доставка, контейнеры +
   PostgreSQL-индекс, история и быстрый поиск поездок.
 
-## 5. Текущее состояние — Планы 1 и 2 завершены (в `main`)
+## 5. Текущее состояние — Планы 1, 2 и 3 завершены (в `main`)
 
-**Тесты: 85 passed (ruff чисто). Всё смержено в `main` локально. Удалённого пуша нет — пуш делает
+**Тесты: 124 passed (ruff чисто). Всё смержено в `main` локально. Удалённого пуша нет — пуш делает
 владелец вручную** (`main` опережает `origin/main`).
 
 ### План 1 (Фундамент)
@@ -118,11 +117,35 @@ storage/chats/<chat_hash>/trips/<trip_hash>/
 - **OCR проверен в образе** `ai-clerk:phase2`: Tesseract 5.5.0, языки rus/kaz/eng, `recognize_pdf`
   корректно распознал текст со скан-PDF.
 
-**Сознательно отложено (как в спеке):** применение политики при ранжировании, NLU-разбор города из
-свободного текста, live-Nominatim, локальный LLM-экстрактор, международные документы/адреса.
+**Сознательно отложено (как в спеке):** live-Nominatim, локальный LLM-экстрактор профиля,
+международные документы/адреса.
 
-**Что ещё проверить вручную (нужен реальный BOT_TOKEN):** живой прогон в Telegram — прислать PDF →
-Сохранить; поделиться геопозицией.
+### План 3 (Оркестрация поездки + поиск)
+- `trips/` — `options.py` (`FlightOption`/`HotelOption`, frozen, `to_dict`), `request.py`
+  (`TripRequest` mutable + `checkin_date()`, `TripDraft` frozen, `OrchestratorReply`),
+  `provider.py` (`BookingProvider` Protocol), `mock_provider.py` (`MockProvider` — детерминированные
+  KZ рейсы/отели; `book()` → `NotImplementedError`, это План 4), `ranking.py` (`rank_flights`
+  «длительность→цена в рамках политики» + `select_flights` с дедлайном `arrive_by` и поиском днём
+  ранее), `llm.py` (`LlmClient` Protocol, `FakeLlmClient`, `ClaudeClient` — ленивый импорт anthropic,
+  в Claude только трип-контекст; one_way выводится из return_date), `orchestrator.py` (`Orchestrator`
+  — in-memory диалог per-chat: слоты → уточнение направление→откуда→дата → поиск/показ → `pick`),
+  `presentation.py` (`render_flight_options` → текст + inline-кнопки `trip:pick:<i>`),
+  `service.py` (`TripService.create_confirmed_trip` → `Trip(status=CONFIRMED)`).
+- `db/models.py` — модель `Trip` (+ `TripStatus`), без сырых ПДн. `location/service.py` — добавлен
+  `airport_for_city` (назначение). `config.py` — `anthropic_api_key`/`anthropic_model`; `anthropic` в deps.
+- `bot/trip_handlers.py` — свободный текст → оркестратор → варианты; callback `trip:pick:*` →
+  `TripService` (под `trip.create`, с обработкой ошибок). `bot/main.py` строит `Orchestrator`
+  (реальный `ClaudeClient`, если задан `ANTHROPIC_API_KEY`, иначе no-op `FakeLlmClient`) и подключает router.
+- **Проверка адаптера Claude:** парсинг/мерж (fence-tolerant JSON, даты, one_way) проверены офлайн;
+  реальный вызов `messages.create` — шаг владельца (нужен `ANTHROPIC_API_KEY`).
+
+**Сознательно отложено (План 4/5):** реальный `book()` + браузер-агент + OTP + персистентная сага
+(План 4); применение `preferred_airlines` в ранжировании (сохраняется в профиле, пока не учитывается);
+наземное время доезда до аэропорта; генерация приказа (План 5).
+
+**Что ещё проверить вручную (нужен реальный BOT_TOKEN, для NLU — `ANTHROPIC_API_KEY`):** живой прогон
+в Telegram — прислать PDF → Сохранить; поделиться геопозицией; написать «нужно в Астану 14-16 июля» →
+выбрать рейс кнопкой.
 
 ### Уроки из код-ревью (учитывать дальше)
 - **План 1:** подписанные `itsdangerous`-токены содержат `.` и длиннее 64 симв. → Telegram deep-link
@@ -137,6 +160,14 @@ storage/chats/<chat_hash>/trips/<trip_hash>/
   короче порога и тест уходил в OCR-ветку. Чинили строкой фикстуры (ASCII ≥ порога), не самим кодом.
 - **План 2 (OCR-граница):** `\b` не срабатывает между кириллицей и цифрой (`ИИН900101300123`) — для
   ИИН используются lookaround'ы `(?<!\d)(\d{12})(?!\d)`, а не `\b`.
+- **План 3 (разделение ответственности LLM/оркестратора):** Claude делает ТОЛЬКО извлечение слотов
+  (`fill_slots → TripRequest`); уточняющие вопросы и проверку слотов ведёт детерминированный
+  `Orchestrator` — это держит ядро тестируемым офлайн (фейк LLM) и упрощает промпт.
+- **План 3 (aiogram):** `callback.message` может быть `InaccessibleMessage`/`None` на старых колбэках —
+  перед `edit_text` проверять `isinstance(..., Message)`; свободный текст ловить фильтром
+  `F.text & ~F.text.startswith("/")`, чтобы не перехватывать команды.
+- **План 3 (производные поля):** держать один источник истины — `one_way` выводится из `return_date`,
+  дата вылета `Trip` берётся из выбранного рейса; так поля не рассинхронизируются.
 
 ## 6. Структура репозитория и ключевые файлы
 
@@ -152,12 +183,15 @@ c:\Users\User\Desktop\AI-clerk\
     roles/ (enums, invites, service)
     profile/ (dto, masking, service, extraction/{ocr,pdf_text,fields})
     location/ (aliases, airports, service)  data/airports_kz.csv
-    bot/ (permissions, onboarding, admin, middleware, main, profile_handlers)
-  tests/...                      # 85 тестов; tests/fixtures/airports_sample.csv
+    trips/ (options, request, provider, mock_provider, ranking, llm, orchestrator, presentation, service)
+    bot/ (permissions, onboarding, admin, middleware, main, profile_handlers, trip_handlers)
+  tests/...                      # 124 теста; tests/fixtures/airports_sample.csv
   docs/superpowers/specs/2026-06-15-ai-secretary-business-trips-design.md        # СПЕЦИФИКАЦИЯ
   docs/superpowers/specs/2026-06-15-phase2-profile-location-design.md            # дизайн Плана 2
+  docs/superpowers/specs/2026-06-16-phase3-trip-orchestration-design.md          # дизайн Плана 3
   docs/superpowers/plans/2026-06-15-phase1-foundation.md                         # план Плана 1
   docs/superpowers/plans/2026-06-15-phase2-profile-location.md                   # план Плана 2
+  docs/superpowers/plans/2026-06-16-phase3-trip-orchestration.md                 # план Плана 3
   HANDOFF.md                     # этот файл
 ```
 
