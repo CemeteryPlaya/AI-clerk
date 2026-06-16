@@ -47,9 +47,14 @@ class Orchestrator:
         dialog.request = await self._llm.fill_slots(dialog.request, message)
         req = dialog.request
 
-        dest = self._location.airport_for_city(req.dest_city) if req.dest_city else None
-        if dest is None:
+        if req.dest_city is None:
             return OrchestratorReply(text="Куда летим? Укажите город назначения.")
+        dest = self._location.airport_for_city(req.dest_city)
+        if dest is None:
+            return OrchestratorReply(
+                text=f"Не нашёл аэропорт для «{req.dest_city}». Уточните город "
+                "назначения (пока поддерживается Казахстан)."
+            )
 
         profile_default = None
         if profile is not None:
@@ -88,6 +93,7 @@ class Orchestrator:
         # Commit the resolved IATA codes only once flights are presentable.
         req.dest_iata = dest.iata
         req.origin_iata = origin.airport.iata
+        # select_flights returns the full ranked list; present only the top N.
         dialog.presented = flights[: self._top_n]
         return OrchestratorReply(text="Нашёл варианты:", flights=dialog.presented)
 

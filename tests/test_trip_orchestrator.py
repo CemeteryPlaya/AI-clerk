@@ -29,6 +29,13 @@ async def test_asks_for_destination_when_missing():
     assert reply.flights == []
 
 
+async def test_unresolvable_destination_names_the_city():
+    orch = _orchestrator(lambda cur, msg: replace(cur, dest_city="Париж"))
+    reply = await orch.handle_message(1, "хочу в Париж", _profile(default_departure_city="Алматы"))
+    assert reply.flights == []
+    assert "париж" in reply.text.lower()  # distinguishes 'not found' from 'missing'
+
+
 async def test_asks_for_origin_when_no_destination_default():
     orch = _orchestrator(lambda cur, msg: replace(cur, dest_city="Астана"))
     reply = await orch.handle_message(1, "в Астану", _profile())  # no default departure
