@@ -9,8 +9,15 @@ from ai_clerk.bot.admin import generate_invite_link
 from ai_clerk.bot.middleware import DependencyMiddleware
 from ai_clerk.bot.onboarding import handle_start
 from ai_clerk.bot.permissions import is_allowed
+from ai_clerk.bot.profile_handlers import build_profile_router
 from ai_clerk.config import get_settings
+from ai_clerk.crypto import Cipher
 from ai_clerk.db.base import create_engine, create_session_factory, init_models
+from ai_clerk.location.airports import AirportIndex
+from ai_clerk.location.service import LocationService
+from ai_clerk.profile.extraction.fields import RegexProfileExtractor
+from ai_clerk.profile.extraction.ocr import TesseractOcrEngine
+from ai_clerk.profile.extraction.pdf_text import PdfTextExtractor
 from ai_clerk.roles.enums import Role
 from ai_clerk.roles.invites import InviteService
 from ai_clerk.roles.service import RoleService
@@ -34,6 +41,10 @@ async def main() -> None:
     engine = create_engine(settings.database_url)
     await init_models(engine)
     session_factory = create_session_factory(engine)
+    cipher = Cipher(settings.fernet_key)
+    location_service = LocationService(AirportIndex.bundled())
+    pdf_extractor = PdfTextExtractor(TesseractOcrEngine())
+    field_extractor = RegexProfileExtractor()
 
     bot = Bot(token=settings.bot_token)
     me = await bot.get_me()
@@ -42,7 +53,7 @@ async def main() -> None:
     bot_username = me.username
 
     dp = Dispatcher()
-    dp.update.middleware(DependencyMiddleware(session_factory))
+    dp.update.middleware(DependencyMiddleware(session_factory, cipher))
 
     @dp.message(CommandStart())
     async def on_start(
@@ -93,6 +104,10 @@ async def main() -> None:
             f"Ссылка-приглашение для роли {target.value} (TTL "
             f"{settings.invite_ttl_seconds}с):\n{link}"
         )
+
+    dp.include_router(
+        build_profile_router(location_service, pdf_extractor, field_extractor)
+    )
 
     try:
         await dp.start_polling(bot)
