@@ -13,6 +13,14 @@ async def test_search_flights_returns_options():
     assert len({f.id for f in flights}) == 3
 
 
+async def test_search_flights_is_deterministic():
+    # Downstream ranking/deadline tests rely on stable results.
+    provider = MockProvider()
+    first = await provider.search_flights("ALA", "NQZ", date(2026, 7, 14))
+    second = await provider.search_flights("ALA", "NQZ", date(2026, 7, 14))
+    assert first == second
+
+
 async def test_search_hotels_scales_nights():
     hotels = await MockProvider().search_hotels("Астана", date(2026, 7, 14), date(2026, 7, 16))
     assert len(hotels) == 3
