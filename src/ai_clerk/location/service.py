@@ -37,3 +37,7 @@ class LocationService:
             if airport:
                 return DepartureResolution(airport, "profile_default")
         return None
+
+    def airport_for_city(self, city: str) -> Airport | None:
+        """Resolve a destination city name to an airport (alias-aware)."""
+        return self._index.by_city(city)
