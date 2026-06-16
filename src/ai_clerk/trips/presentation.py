@@ -2,15 +2,20 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from ai_clerk.trips.options import FlightOption
 
+_CABIN_LABELS = {"economy": "эконом", "business": "бизнес"}
+
 
 def _format_line(index: int, flight: FlightOption) -> str:
     minutes = int(flight.duration.total_seconds() // 60)
     hours, mins = divmod(minutes, 60)
     stops = "прямой" if flight.stops == 0 else f"{flight.stops} пересад."
+    cabin = _CABIN_LABELS.get(flight.cabin, flight.cabin)
+    # Arrival shows time only (KZ domestic flights arrive same-day at MVP); add
+    # the date here if overnight/international routes are introduced later.
     return (
         f"{index + 1}. {flight.airline} "
         f"{flight.departure:%d.%m %H:%M}→{flight.arrival:%H:%M} "
-        f"({hours}ч{mins:02d}м, {stops}), {int(flight.price)} ₸, {flight.cabin}"
+        f"({hours}ч{mins:02d}м, {stops}), {int(flight.price)} ₸, {cabin}"
     )
 
 

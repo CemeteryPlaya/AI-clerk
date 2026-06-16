@@ -18,6 +18,13 @@ def test_render_lists_options_with_buttons():
 
     assert "Air Astana" in text
     assert "1." in text and "2." in text
+    # formatting of each part (silent-regression guard for a pure formatter)
+    assert "14.07 07:00→09:00" in text   # date + dep→arr times
+    assert "2ч00м" in text               # duration, zero-padded minutes
+    assert "прямой" in text              # flight A: no stops
+    assert "1 пересад." in text          # flight B: stops=1
+    assert "45000 ₸" in text             # price with tenge symbol
+    assert "эконом" in text              # cabin localised to Russian
     buttons = [b for row in keyboard.inline_keyboard for b in row]
     assert len(buttons) == 2
     assert buttons[0].callback_data == "trip:pick:0"
