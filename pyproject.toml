@@ -10,6 +10,7 @@ dependencies = [
     "sqlalchemy>=2.0.36",
     "asyncpg>=0.30",
     "itsdangerous>=2.2",
+    "pypdf>=5.1",
 ]
 
 [project.optional-dependencies]
@@ -18,6 +19,12 @@ dev = [
     "pytest-asyncio>=0.24",
     "aiosqlite>=0.20",
     "ruff>=0.7",
+    "reportlab>=4.2",
+]
+ocr = [
+    "pytesseract>=0.3.13",
+    "pdf2image>=1.17",
+    "pillow>=10.4",
 ]
 
 [build-system]
