@@ -42,7 +42,7 @@ class AirportIndex:
                 self._by_city.setdefault(normalize_city(airport.city), airport)
 
     @classmethod
-    def from_csv(cls, path) -> "AirportIndex":
+    def from_csv(cls, path: str | Path) -> "AirportIndex":
         airports: list[Airport] = []
         with open(path, newline="", encoding="utf-8") as handle:
             for row in csv.DictReader(handle):
