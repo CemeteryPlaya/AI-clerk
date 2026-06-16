@@ -43,7 +43,21 @@ def _known(current: TripRequest) -> dict:
     }
 
 
+def _extract_json(text: str) -> dict:
+    """Parse the JSON object from the model reply, tolerating markdown fences
+    or surrounding prose by extracting the outermost {...}."""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError(f"no JSON object in model reply: {text!r}")
+    return json.loads(text[start : end + 1])
+
+
 def _merge(current: TripRequest, data: dict) -> TripRequest:
+    """Merge extracted slots into the current request. Slots are append-only:
+    a null/missing value preserves the existing one (use /cancel to start over).
+    Resolved iata codes are carried through untouched."""
+
     def _date(value):
         return date.fromisoformat(value) if value else None
 
@@ -58,7 +72,9 @@ def _merge(current: TripRequest, data: dict) -> TripRequest:
         depart_date=_date(data.get("depart_date")) or current.depart_date,
         arrive_by=_dt(data.get("arrive_by")) or current.arrive_by,
         return_date=_date(data.get("return_date")) or current.return_date,
-        one_way=bool(data.get("one_way", current.one_way)),
+        one_way=(
+            bool(data["one_way"]) if data.get("one_way") is not None else current.one_way
+        ),
         notes=data.get("notes") or current.notes,
     )
 
@@ -70,21 +86,24 @@ class ClaudeClient:
     carries only trip context — never identity PII."""
 
     def __init__(self, api_key: str, model: str):
-        self._api_key = api_key
-        self._model = model
-
-    async def fill_slots(self, current: TripRequest, message: str) -> TripRequest:
+        # Imported here (not at module level) so the module loads without the
+        # anthropic SDK; the client (and its connection pool) is built once and
+        # reused across the multi-turn conversation. Construction makes no
+        # network call.
         from anthropic import AsyncAnthropic
 
-        client = AsyncAnthropic(api_key=self._api_key)
+        self._model = model
+        self._client = AsyncAnthropic(api_key=api_key)
+
+    async def fill_slots(self, current: TripRequest, message: str) -> TripRequest:
         user = json.dumps(
             {"known": _known(current), "message": message}, ensure_ascii=False
         )
-        resp = await client.messages.create(
+        resp = await self._client.messages.create(
             model=self._model,
             max_tokens=512,
             system=_SYSTEM,
             messages=[{"role": "user", "content": user}],
         )
-        data = json.loads(resp.content[0].text)
+        data = _extract_json(resp.content[0].text)
         return _merge(current, data)
