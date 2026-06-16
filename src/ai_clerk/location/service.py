@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from ai_clerk.location.airports import Airport, AirportIndex
 
 
-@dataclass
+@dataclass(frozen=True)
 class DepartureResolution:
     airport: Airport
     source: str  # "explicit" | "coordinates" | "profile_default"
@@ -26,7 +26,7 @@ class LocationService:
             airport = self._index.by_city(explicit_city)
             if airport:
                 return DepartureResolution(airport, "explicit")
-        if coords:
+        if coords is not None:  # (0.0, 0.0) is falsy but a valid location
             airport = self._index.nearest(coords[0], coords[1])
             if airport:
                 return DepartureResolution(airport, "coordinates")
