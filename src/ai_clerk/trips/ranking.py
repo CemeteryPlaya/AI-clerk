@@ -31,7 +31,12 @@ async def select_flights(
     cabin_class: str | None = None,
 ) -> list[FlightOption]:
     """Search candidate dates, honour an arrival deadline (considering a
-    departure the day before), and return the ranked result."""
+    departure the day before), and return the ranked result.
+
+    Date selection: if *depart_date* is set it is used exclusively (no
+    day-before expansion); *arrive_by* still filters the results if also set.
+    If only *arrive_by* is set, both the deadline day and the day before are
+    searched."""
     if request.depart_date is not None:
         candidate_dates = [request.depart_date]
     elif request.arrive_by is not None:
@@ -40,11 +45,11 @@ async def select_flights(
     else:
         return []
 
-    options: list[FlightOption] = []
+    gathered: list[FlightOption] = []
     for on_date in candidate_dates:
-        options.extend(await provider.search_flights(origin_iata, dest_iata, on_date))
+        gathered.extend(await provider.search_flights(origin_iata, dest_iata, on_date))
 
     if request.arrive_by is not None:
-        options = [o for o in options if o.arrival <= request.arrive_by]
+        gathered = [o for o in gathered if o.arrival <= request.arrive_by]
 
-    return rank_flights(options, budget_limit=budget_limit, cabin_class=cabin_class)
+    return rank_flights(gathered, budget_limit=budget_limit, cabin_class=cabin_class)

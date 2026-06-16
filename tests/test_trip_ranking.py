@@ -42,5 +42,18 @@ async def test_select_flights_arrive_by_considers_day_before_and_filters():
     assert any(f.departure.date() == date(2026, 7, 14) for f in ranked)
 
 
+async def test_select_flights_depart_date_takes_precedence_over_arrive_by():
+    # Both set: only depart_date drives which dates are searched (no day-before),
+    # but arrive_by still filters the results.
+    req = TripRequest(
+        depart_date=date(2026, 7, 14),
+        arrive_by=datetime(2026, 7, 14, 8, 50),
+    )
+    ranked = await select_flights(MockProvider(), "ALA", "NQZ", req)
+    assert all(f.departure.date() == date(2026, 7, 14) for f in ranked)
+    assert len(ranked) == 1  # only A (arr 08:45) clears the 08:50 deadline
+    assert ranked[0].id.endswith("-A")
+
+
 async def test_select_flights_no_date_returns_empty():
     assert await select_flights(MockProvider(), "ALA", "NQZ", TripRequest()) == []
