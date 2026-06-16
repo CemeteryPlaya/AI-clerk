@@ -13,7 +13,7 @@ class TripRequest:
     origin_city: str | None = None
     origin_iata: str | None = None
     depart_date: date | None = None
-    arrive_by: datetime | None = None  # required arrival time at destination
+    arrive_by: datetime | None = None  # required arrival time (naive local, no tz)
     return_date: date | None = None
     one_way: bool = True
     notes: str | None = None
@@ -21,6 +21,10 @@ class TripRequest:
 
 @dataclass(frozen=True)
 class TripDraft:
+    """A confirmed selection. `request` is held by reference; the orchestrator
+    passes a snapshot (dataclasses.replace) at pick() time so the draft is
+    self-contained and immune to later dialog mutation."""
+
     request: TripRequest
     flight: FlightOption
     hotel: HotelOption | None = None

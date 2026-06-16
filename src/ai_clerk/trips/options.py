@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -8,11 +9,13 @@ class FlightOption:
     airline: str
     origin_iata: str
     dest_iata: str
+    # departure/arrival are naive local datetimes (no tz at MVP); arrive_by on
+    # TripRequest follows the same convention so deadline comparisons are valid.
     departure: datetime
     arrival: datetime
     stops: int
     price: float
-    cabin: str  # "economy" | "business"
+    cabin: Literal["economy", "business"]
 
     @property
     def duration(self) -> timedelta:
