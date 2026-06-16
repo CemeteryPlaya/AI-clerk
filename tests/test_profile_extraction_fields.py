@@ -20,7 +20,12 @@ def test_extracts_all_fields():
         iin="900101300123",
         document_number="N12345678",
         birth_date="01.01.1990",
+        document_type="udo",  # "Удостоверение личности" in the sample
     )
+
+
+def test_detects_passport_document_type():
+    assert RegexProfileExtractor().extract("Паспорт гражданина").document_type == "passport"
 
 
 def test_missing_fields_are_none():

@@ -59,6 +59,7 @@ def _masked_confirmation(extracted: ExtractedProfile) -> str:
         "Распознал данные (показаны маскированно):\n"
         f"• ФИО: {extracted.full_name or '—'}\n"
         f"• ИИН: {mask_iin(extracted.iin)}\n"
+        f"• Тип документа: {extracted.document_type or '—'}\n"
         f"• № документа: {mask_document(extracted.document_number)}\n"
         f"• Дата рождения: {extracted.birth_date or '—'}\n\n"
         "Сохранить в зашифрованном виде?"
@@ -84,6 +85,15 @@ def build_profile_router(
             await message.answer("Недостаточно прав для редактирования профиля.")
             return False
         return True
+
+    async def _respond(callback: CallbackQuery, text: str) -> None:
+        # callback.message may be an InaccessibleMessage (or None) for callbacks
+        # on old messages; only a real Message can be edited in place.
+        if isinstance(callback.message, Message):
+            await callback.message.edit_text(text)
+            await callback.answer()
+        else:
+            await callback.answer(text, show_alert=True)
 
     @router.message(Command("profile"))
     async def on_profile(
@@ -138,17 +148,16 @@ def build_profile_router(
             callback.from_user.id,
             full_name=extracted.full_name,
             iin=extracted.iin,
+            document_type=extracted.document_type,
             document_number=extracted.document_number,
             birth_date=extracted.birth_date,
         )
-        await callback.message.edit_text("Данные сохранены в зашифрованном виде.")
-        await callback.answer()
+        await _respond(callback, "Данные сохранены в зашифрованном виде.")
 
     @router.callback_query(F.data == "profile:redo")
     async def on_redo(callback: CallbackQuery) -> None:
         pending.pop(callback.from_user.id, None)
-        await callback.message.edit_text("Хорошо, пришлите PDF-документ заново.")
-        await callback.answer()
+        await _respond(callback, "Хорошо, пришлите PDF-документ заново.")
 
     @router.message(Command("location"))
     async def on_location_prompt(

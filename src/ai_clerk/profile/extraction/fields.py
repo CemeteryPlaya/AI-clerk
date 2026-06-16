@@ -23,6 +23,7 @@ class ExtractedProfile:
     iin: str | None = None
     document_number: str | None = None
     birth_date: str | None = None
+    document_type: str | None = None  # "passport" | "udo"
 
 
 class ProfileExtractor(Protocol):
@@ -38,7 +39,17 @@ class RegexProfileExtractor:
             iin=self._first(_IIN_RE, text),
             document_number=self._normalize_doc(self._first(_DOC_RE, text)),
             birth_date=self._first(_DATE_RE, text),
+            document_type=self._detect_doc_type(text),
         )
+
+    @staticmethod
+    def _detect_doc_type(text: str) -> str | None:
+        lowered = text.lower()
+        if "паспорт" in lowered:
+            return "passport"
+        if "удостоверение" in lowered:
+            return "udo"
+        return None
 
     @staticmethod
     def _first(pattern: re.Pattern, text: str) -> str | None:
