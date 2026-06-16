@@ -10,6 +10,10 @@ from ai_clerk.bot.middleware import DependencyMiddleware
 from ai_clerk.bot.onboarding import handle_start
 from ai_clerk.bot.permissions import is_allowed
 from ai_clerk.bot.profile_handlers import build_profile_router
+from ai_clerk.bot.trip_handlers import build_trip_router
+from ai_clerk.trips.llm import ClaudeClient, FakeLlmClient
+from ai_clerk.trips.mock_provider import MockProvider
+from ai_clerk.trips.orchestrator import Orchestrator
 from ai_clerk.config import get_settings
 from ai_clerk.crypto import Cipher
 from ai_clerk.db.base import create_engine, create_session_factory, init_models
@@ -45,6 +49,13 @@ async def main() -> None:
     location_service = LocationService(AirportIndex.bundled())
     pdf_extractor = PdfTextExtractor(TesseractOcrEngine())
     field_extractor = RegexProfileExtractor()
+    if settings.anthropic_api_key:
+        llm_client = ClaudeClient(settings.anthropic_api_key, settings.anthropic_model)
+    else:
+        # No API key: a no-op extractor so the orchestrator simply asks for the
+        # missing slots. Set ANTHROPIC_API_KEY for real free-text understanding.
+        llm_client = FakeLlmClient(lambda current, message: current)
+    orchestrator = Orchestrator(llm_client, location_service, MockProvider())
 
     bot = Bot(token=settings.bot_token)
     me = await bot.get_me()
@@ -105,6 +116,7 @@ async def main() -> None:
             f"{settings.invite_ttl_seconds}с):\n{link}"
         )
 
+    dp.include_router(build_trip_router(orchestrator))
     dp.include_router(
         build_profile_router(location_service, pdf_extractor, field_extractor)
     )

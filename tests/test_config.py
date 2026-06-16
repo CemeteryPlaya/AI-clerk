@@ -25,3 +25,27 @@ def test_settings_defaults(monkeypatch):
 
     assert s.admin_telegram_ids == []
     assert s.log_level == "INFO"
+
+
+def test_anthropic_settings_defaults(monkeypatch):
+    monkeypatch.setenv("BOT_TOKEN", "x")
+    monkeypatch.setenv("SECRET_KEY", "x")
+    monkeypatch.setenv("FERNET_KEY", "x")
+
+    s = Settings(_env_file=None)
+
+    assert s.anthropic_api_key is None
+    assert s.anthropic_model == "claude-sonnet-4-6"
+
+
+def test_anthropic_settings_from_env(monkeypatch):
+    monkeypatch.setenv("BOT_TOKEN", "x")
+    monkeypatch.setenv("SECRET_KEY", "x")
+    monkeypatch.setenv("FERNET_KEY", "x")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-123")
+    monkeypatch.setenv("ANTHROPIC_MODEL", "claude-opus-4-8")
+
+    s = Settings(_env_file=None)
+
+    assert s.anthropic_api_key == "sk-ant-123"
+    assert s.anthropic_model == "claude-opus-4-8"
