@@ -32,5 +32,21 @@ async def test_trip_persists(session):
     assert trip.created_at is not None
 
 
+async def test_trip_updated_at_advances_on_update(session):
+    trip = Trip(
+        chat_id=1, telegram_user_id=1, dest_city="Астана",
+        status=TripStatus.CONFIRMED.value,
+    )
+    session.add(trip)
+    await session.commit()
+    await session.refresh(trip)
+    original_updated = trip.updated_at
+
+    trip.dest_city = "Алматы"  # a real change -> triggers an UPDATE
+    await session.commit()
+    await session.refresh(trip)
+    assert trip.updated_at > original_updated
+
+
 async def test_trip_status_enum_values():
     assert TripStatus.CONFIRMED.value == "confirmed"
