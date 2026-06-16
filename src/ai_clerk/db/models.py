@@ -1,7 +1,8 @@
+import enum
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, Integer, JSON, String, Text
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ai_clerk.db.base import Base
@@ -78,6 +79,42 @@ class Profile(Base):
     cabin_class: Mapped[str | None] = mapped_column(String(32), default=None)
     hotel_max_stars: Mapped[int | None] = mapped_column(Integer, default=None)
     per_diem: Mapped[float | None] = mapped_column(Float, default=None)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class TripStatus(str, enum.Enum):
+    CONFIRMED = "confirmed"  # Plan 4 adds BOOKING/BOOKED/etc.
+
+
+class Trip(Base):
+    """A trip created by the orchestrator. Plan 3 persists it at CONFIRMED;
+    Plan 4's booking saga resumes from here. No raw PII is stored — traveler
+    identity stays in Profile and is pulled at order-generation time (Plan 5)."""
+
+    __tablename__ = "trips"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger)
+    telegram_user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+
+    origin_iata: Mapped[str | None] = mapped_column(String(8), default=None)
+    dest_city: Mapped[str | None] = mapped_column(String(128), default=None)
+    dest_iata: Mapped[str | None] = mapped_column(String(8), default=None)
+    depart_date: Mapped[date | None] = mapped_column(Date, default=None)
+    return_date: Mapped[date | None] = mapped_column(Date, default=None)
+
+    selected_flight: Mapped[dict | None] = mapped_column(JSON, default=None)
+    selected_hotel: Mapped[dict | None] = mapped_column(JSON, default=None)
+
+    status: Mapped[str] = mapped_column(String(16))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
