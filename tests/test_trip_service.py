@@ -35,7 +35,11 @@ async def test_create_confirmed_trip_persists_selection(session):
 
     row = (await session.execute(select(Trip).where(Trip.id == trip.id))).scalar_one()
     assert row.telegram_user_id == 20
-    assert row.depart_date == date(2026, 7, 14)
+    assert row.depart_date == date(2026, 7, 14)  # from the confirmed flight
+    assert row.return_date == date(2026, 7, 16)
+    # JSON columns round-trip as plain dicts with ISO-8601 datetime strings
+    assert isinstance(row.selected_flight, dict)
+    assert row.selected_flight["departure"] == "2026-07-14T07:00:00"
 
 
 async def test_create_confirmed_trip_without_hotel(session):

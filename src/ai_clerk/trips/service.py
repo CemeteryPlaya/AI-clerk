@@ -20,7 +20,9 @@ class TripService:
             origin_iata=req.origin_iata,
             dest_city=req.dest_city,
             dest_iata=req.dest_iata,
-            depart_date=req.checkin_date(),
+            # Departure date comes from the confirmed flight (authoritative even
+            # when the request was expressed only as an arrival deadline).
+            depart_date=draft.flight.departure.date(),
             return_date=req.return_date,
             selected_flight=draft.flight.to_dict(),
             selected_hotel=draft.hotel.to_dict() if draft.hotel else None,
