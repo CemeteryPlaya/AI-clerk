@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # Ops
     log_level: str = "INFO"
 
+    # LLM (Claude orchestrator)
+    anthropic_api_key: str | None = None
+    anthropic_model: str = "claude-sonnet-4-6"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
