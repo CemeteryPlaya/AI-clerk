@@ -85,6 +85,7 @@ class Orchestrator:
                 "Попробуем другие даты или направление?"
             )
 
+        # Commit the resolved IATA codes only once flights are presentable.
         req.dest_iata = dest.iata
         req.origin_iata = origin.airport.iata
         dialog.presented = flights[: self._top_n]
@@ -101,7 +102,7 @@ class Orchestrator:
 
         hotel = None
         if req.return_date is not None:
-            checkin = req.depart_date or (req.arrive_by.date() if req.arrive_by else None)
+            checkin = req.checkin_date()
             if checkin is not None:
                 hotels = await self._provider.search_hotels(
                     req.dest_city, checkin, req.return_date

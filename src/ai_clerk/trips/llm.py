@@ -64,6 +64,7 @@ def _merge(current: TripRequest, data: dict) -> TripRequest:
     def _dt(value):
         return datetime.fromisoformat(value) if value else None
 
+    return_date = _date(data.get("return_date")) or current.return_date
     return TripRequest(
         dest_city=data.get("dest_city") or current.dest_city,
         dest_iata=current.dest_iata,
@@ -71,10 +72,9 @@ def _merge(current: TripRequest, data: dict) -> TripRequest:
         origin_iata=current.origin_iata,
         depart_date=_date(data.get("depart_date")) or current.depart_date,
         arrive_by=_dt(data.get("arrive_by")) or current.arrive_by,
-        return_date=_date(data.get("return_date")) or current.return_date,
-        one_way=(
-            bool(data["one_way"]) if data.get("one_way") is not None else current.one_way
-        ),
+        return_date=return_date,
+        # Derive one_way from return_date so the two can never disagree.
+        one_way=return_date is None,
         notes=data.get("notes") or current.notes,
     )
 

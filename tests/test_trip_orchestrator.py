@@ -64,6 +64,51 @@ async def test_pick_returns_draft_and_clears_dialog():
     assert await orch.pick(1, 0, _profile()) is None  # dialog cleared
 
 
+async def test_multi_turn_accumulates_then_presents():
+    # Slots filled across two turns on the same chat: turn 1 adds the city
+    # (orchestrator asks for the date), turn 2 adds the date (now it searches).
+    calls: list[str] = []
+
+    def responder(cur: TripRequest, msg: str) -> TripRequest:
+        calls.append(msg)
+        if len(calls) == 1:
+            return replace(cur, dest_city="Астана")
+        return replace(cur, depart_date=date(2026, 7, 14))
+
+    orch = _orchestrator(responder)
+    profile = _profile(default_departure_city="Алматы")
+
+    first = await orch.handle_message(1, "в Астану", profile)
+    assert first.flights == []
+    assert "дат" in first.text.lower()
+
+    second = await orch.handle_message(1, "14 июля", profile)
+    assert second.flights  # dest_city from turn 1 persisted -> now complete
+    assert second.flights[0].dest_iata == "NQZ"
+
+
+async def test_no_flights_when_policy_excludes_all():
+    orch = _orchestrator(
+        lambda cur, msg: replace(cur, dest_city="Астана", depart_date=date(2026, 7, 14))
+    )
+    reply = await orch.handle_message(
+        1, "в Астану 14 июля",
+        _profile(default_departure_city="Алматы", budget_limit=1000.0),
+    )
+    assert reply.flights == []
+    assert "не нашёл" in reply.text.lower()
+
+
+async def test_pick_one_way_has_no_hotel():
+    orch = _orchestrator(
+        lambda cur, msg: replace(cur, dest_city="Астана", depart_date=date(2026, 7, 14))
+    )  # no return_date -> one-way
+    await orch.handle_message(1, "в Астану 14 июля", _profile(default_departure_city="Алматы"))
+    draft = await orch.pick(1, 0, _profile(default_departure_city="Алматы"))
+    assert draft is not None
+    assert draft.hotel is None
+
+
 async def test_pick_out_of_range_returns_none():
     orch = _orchestrator(lambda cur, msg: cur)
     assert await orch.pick(999, 0, _profile()) is None

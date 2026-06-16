@@ -18,6 +18,11 @@ class TripRequest:
     one_way: bool = True
     notes: str | None = None
 
+    def checkin_date(self) -> date | None:
+        """Hotel check-in date: the outbound date (explicit, or the arrival
+        deadline's day if only arrive_by is set)."""
+        return self.depart_date or (self.arrive_by.date() if self.arrive_by else None)
+
 
 @dataclass(frozen=True)
 class TripDraft:
